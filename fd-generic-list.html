@@ -1,8 +1,11 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../fd-polymer-rest-service/fd-polymer-rest-service.html">
 <link rel="import" href="../fd-polymer-ws-service/fd-polymer-ws-service.html">
+<link rel="import" href="../fd-polymer-ispermitted/fd-polymer-ispermitted.html">
 <link rel="import" href="../fd-polymer-api-settings/fd-polymer-api-settings.html">
 <link rel="import" href="../fd-polymer-i18next-translate/fd-polymer-i18next-translate.html">
+<link rel="import" href="../paper-progress/paper-progress.html">
+
 <!--
 Element providing proof of concept of a Thing card, with all needed features
 
@@ -16,7 +19,7 @@ Element providing proof of concept of a Thing card, with all needed features
 @status beta
 @homepage http://bestmazzo.github.io/fd-polymer-thing
 -->
-<polymer-element name="fd-generic-list" attributes="ssl address port apiVersion guest mode type wsType items">
+<polymer-element name="fd-generic-list" attributes="ssl address port apiVersion guest mode type wsType items enAdd">
 
   <template>
     <style>
@@ -27,17 +30,47 @@ Element providing proof of concept of a Thing card, with all needed features
         font-weight: 300;
         font-family: RobotoDraft, 'Helvetica Neue', Helvetica, Arial;
       }
+      paper-icon-button.big::shadow #icon {
+        width: 85px;
+        height: 85px;
+      }
+      paper-icon-button.big:hover::shadow #icon {
+        color: #8bae2d;
+      }
+      paper-progress {
+        display: block;
+        width: 100%;
+        padding: 25px 0;
+        width: 100%;
+        background-color: #8bae2d;
+      }
     </style>
     <fd-api-settings ssl="{{ssl}}" address="{{address}}" port="{{port}}" apiVersion="{{apiVersion}}" apiUrl="{{apiUrl}}">
     </fd-api-settings>
-    <div layout horizontal wrap on-needrequery="{{requery}}">
-      <fd-rest-service id="itemList" fdtype="{{type}}" fditems="{{items}}" on-rest-response="{{ startWS }}" guest="{{guest}}">
-      </fd-rest-service>
-      <content></content>
-      <fd-ws-service id="wss" wstype="{{wsType}}" on-message="{{ updateItem }}" auto="false">
-      </fd-ws-service>
 
+    <fd-rest-service id="itemList" fdtype="{{type}}" fditems="{{items}}" on-rest-response="{{ startWS }}" guest="{{guest}}"></fd-rest-service>
+    <template if="{{loading}}">
+      <paper-progress indeterminate>
+      </paper-progress>
+      <br>
+    </template>
+
+    <div layout horizontal wrap on-needrequery="{{requery}}">
+      <content></content>
+      <fd-ispermitted permission="{{type}}:create" allowed="{{canAdd}}"></fd-ispermitted>
+      <template if="{{enAdd && canAdd}}">
+        <fd-card mode="{{mode}}" ensettings="false" enextra="false" style="padding:5px;">
+          <icon>
+            <paper-icon-button class="big" icon="add" on-tap="{{addItem}}"></paper-icon-button>
+          </icon>
+          <name>{{ 'add_X' | translate(translate('object'))}}</name>
+          <description>{{'add' | translate}}</description>
+        </fd-card>
+      </template>
     </div>
+
+    <fd-ws-service id="wss" wstype="{{wsType}}" on-message="{{ updateItem }}" auto="false"></fd-ws-service>
+
   </template>
 
   <script>
@@ -78,9 +111,14 @@ Element providing proof of concept of a Thing card, with all needed features
        */
       mode: 'matCard',
       guest: undefined,
+      enAdd: undefined,
+      loading: true,
+      enAddChanged: function() {
+        console.log("ENADD", this.enAdd);
+      },
       updateItem: function(event) {
         var data = JSON.parse(event.detail);
-        for (item in this.items) {
+        for (var item in this.items) {
           if (data.uuid === this.items[item].uuid) {
             this.items[item] = data;
             break;
@@ -92,9 +130,15 @@ Element providing proof of concept of a Thing card, with all needed features
           this.$.wss.go();
         }
       },
-      requery: function(){
+      requery: function() {
         console.log("requerying");
         this.$.itemList.go();
+      },
+      addItem: function() {
+        console.log("TRYING TO ADD A NEW ITEM!!");
+      },
+      ready: function() {
+        this.loading = false;
       }
     });
   </script>
