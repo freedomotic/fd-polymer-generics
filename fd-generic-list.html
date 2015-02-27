@@ -54,7 +54,7 @@ Element providing proof of concept of a Thing card, with all needed features
       </paper-progress>
       <br>
     </template>
-
+    <template if="{{! loading}}">
     <div layout horizontal wrap on-needrequery="{{requery}}">
       <content></content>
       <fd-ispermitted permission="{{type}}:create" allowed="{{canAdd}}"></fd-ispermitted>
@@ -63,12 +63,12 @@ Element providing proof of concept of a Thing card, with all needed features
           <icon>
             <paper-icon-button class="big" icon="add" on-tap="{{addItem}}"></paper-icon-button>
           </icon>
-          <name>{{ 'add_X' | translate(translate('object'))}}</name>
-          <description>{{'add' | translate}}</description>
+          <name>{{ 'add_X' | t(t('object'))}}</name>
+          <description>{{'add' | t}}</description>
         </fd-card>
       </template>
     </div>
-
+   </template>
     <fd-ws-service id="wss" wstype="{{wsType}}" on-message="{{ updateItem }}" auto="false"></fd-ws-service>
 
   </template>
