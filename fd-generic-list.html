@@ -1,11 +1,11 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../fd-polymer-rest-service/fd-polymer-rest-service.html">
-<link rel="import" href="../fd-polymer-ws-service/fd-polymer-ws-service.html">
+<link rel="import" href="../fd-polymer-ws-service/fd-polymer-generic-ws.html">
 <link rel="import" href="../fd-polymer-ispermitted/fd-polymer-ispermitted.html">
 <link rel="import" href="../fd-polymer-api-settings/fd-polymer-api-settings.html">
 <link rel="import" href="../fd-polymer-i18next-translate/fd-polymer-i18next-translate.html">
+<link rel="import" href="../polymer-filters/polymer-filters.html">
 <link rel="import" href="../paper-progress/paper-progress.html">
-
 <!--
 Element providing proof of concept of a Thing card, with all needed features
 
@@ -19,7 +19,7 @@ Element providing proof of concept of a Thing card, with all needed features
 @status beta
 @homepage http://bestmazzo.github.io/fd-polymer-thing
 -->
-<polymer-element name="fd-generic-list" attributes="ssl address port apiVersion guest mode type wsType items enAdd">
+<polymer-element name="fd-generic-list" attributes="ssl address port apiVersion guest mode type wsType items enAdd txtFilter">
 
   <template>
     <style>
@@ -31,8 +31,8 @@ Element providing proof of concept of a Thing card, with all needed features
         font-family: RobotoDraft, 'Helvetica Neue', Helvetica, Arial;
       }
       paper-icon-button.big::shadow #icon {
-        width: 85px;
-        height: 85px;
+        width: 80px;
+        height: 80px;
       }
       paper-icon-button.big:hover::shadow #icon {
         color: #8bae2d;
@@ -43,33 +43,34 @@ Element providing proof of concept of a Thing card, with all needed features
         padding: 25px 0;
         width: 100%;
         background-color: #8bae2d;
+        z-index:10000;
       }
     </style>
     <fd-api-settings ssl="{{ssl}}" address="{{address}}" port="{{port}}" apiVersion="{{apiVersion}}" apiUrl="{{apiUrl}}">
     </fd-api-settings>
 
-    <fd-rest-service id="itemList" fdtype="{{type}}" fditems="{{items}}" on-rest-response="{{ startWS }}" guest="{{guest}}"></fd-rest-service>
+    <fd-rest-service id="itemList" fdtype="{{type}}" fditems="{{rawitems}}" on-rest-response="{{ startWS }}" guest="{{guest}}"></fd-rest-service>
     <template if="{{loading}}">
       <paper-progress indeterminate>
       </paper-progress>
       <br>
     </template>
-    <template if="{{! loading}}">
+    
     <div layout horizontal wrap on-needrequery="{{requery}}">
       <content></content>
       <fd-ispermitted permission="{{type}}:create" allowed="{{canAdd}}"></fd-ispermitted>
       <template if="{{enAdd && canAdd}}">
-        <fd-card mode="{{mode}}" ensettings="false" enextra="false" style="padding:5px;">
+        <fd-card mode="{{mode}}" ensettings="false" enextra="false" style="padding:5px;" endelete="false">
           <icon>
             <paper-icon-button class="big" icon="add" on-tap="{{addItem}}"></paper-icon-button>
           </icon>
-          <name>{{ 'add_X' | t(t('object'))}}</name>
+          <name>{{ 'add_X' | t(t(type))}}</name>
           <description>{{'add' | t}}</description>
         </fd-card>
       </template>
     </div>
-   </template>
-    <fd-ws-service id="wss" wstype="{{wsType}}" on-message="{{ updateItem }}" auto="false"></fd-ws-service>
+   
+    <fd-generic-ws id="wss" type="{{wsType}}" on-message="{{ updateItem }}" auto="false"></fd-generic-ws>
 
   </template>
 
@@ -111,13 +112,29 @@ Element providing proof of concept of a Thing card, with all needed features
        */
       mode: 'matCard',
       guest: undefined,
-      enAdd: undefined,
+      enAdd: true,
       loading: true,
+      items: undefined,
+      rawitems: undefined,
+      observe: {
+        'rawitems': 'reloadItems',
+        'txtFilter': 'reloadItems'
+      },
+      reloadItems: function(){
+        if (!this.txtFilter){
+          this.items = this.rawitems;
+        } else {
+          var filterMatch = new RegExp(this.txtFilter, 'i');
+          this.items = this.rawitems.filter(function(item){
+            return ( filterMatch.test(item.name))    
+          });
+        }
+      },
       enAddChanged: function() {
         console.log("ENADD", this.enAdd);
       },
-      updateItem: function(event) {
-        var data = JSON.parse(event.detail);
+      updateItem: function(e) {
+        var data = e.detail;
         for (var item in this.items) {
           if (data.uuid === this.items[item].uuid) {
             this.items[item] = data;
@@ -127,7 +144,8 @@ Element providing proof of concept of a Thing card, with all needed features
       },
       startWS: function() {
         if (!!this.wsType) {
-          this.$.wss.go();
+          console.log("STARTWS:",this.wsType);
+          this.$.wss.auto=true;
         }
       },
       requery: function() {
@@ -136,8 +154,9 @@ Element providing proof of concept of a Thing card, with all needed features
       },
       addItem: function() {
         console.log("TRYING TO ADD A NEW ITEM!!");
+        this.fire("click-add");
       },
-      ready: function() {
+      domReady: function() {
         this.loading = false;
       }
     });

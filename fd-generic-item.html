@@ -1,6 +1,6 @@
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../fd-polymer-rest-service/fd-polymer-rest-service.html">
-<link rel="import" href="../fd-polymer-ws-service/fd-polymer-ws-service.html">
+<link rel="import" href="../fd-polymer-ws-service/fd-polymer-generic-ws.html">
 <link rel="import" href="../fd-polymer-api-settings/fd-polymer-api-settings.html">
 <link rel="import" href="../fd-polymer-i18next-translate/fd-polymer-i18next-translate.html">
 <link rel="import" href="../paper-shadow/paper-shadow.html">
@@ -20,127 +20,129 @@ Element providing proof of concept of a Thing card, with all needed features
 @status beta
 @homepage http://bestmazzo.github.io/fd-polymer-thing
 -->
-<polymer-element name="fd-generic-item" extends="fd-card" attributes="ssl address port apiVersion item uuid guest mode type wsType">
+<polymer-element name="fd-generic-item" extends="fd-card" attributes="ssl address port uuidfield apiVersion item uuid guest mode type wsType">
 
   <template>
-     <style>
-    :host {
-      display: block;
-      position: relative;
-      font-size: 1.2rem;
-      font-weight: 300;
-      font-family: RobotoDraft, 'Helvetica Neue', Helvetica, Arial;
-    }
-
+    <style>
+      :host {
+        display: block;
+        position: relative;
+        font-size: 1.2rem;
+        font-weight: 300;
+        font-family: RobotoDraft, 'Helvetica Neue', Helvetica, Arial;
+      }
     </style>
-  <fd-api-settings
-    ssl="{{ssl}}" address="{{address}}" 
-    port="{{port}}" apiVersion="{{apiVersion}}"
-    apiUrl="{{apiUrl}}">
-  </fd-api-settings>
-
-<template if="{{uuid}}">
-  <fd-rest-service 
-    id="itemData"
-    fdtype="{{type}}/{{uuid}}" 
-    fditems="{{item}}"
-    on-rest-response="{{startWS}}"
-    guest="{{guest}}"
-    auto="false">
-  </fd-rest-service>    
+    <paper-action-dialog backdrop transition="core-transition-center" id="deldialog" heading="{{'confirm_deletion_title' | t}}">
+      <p>{{'confirm_object_delete' | t}}</p>
+      <paper-button affirmative raised style="color:white;background-color:#8bae2d;">{{ 'no' | t }}</paper-button>
+      <paper-button dismissive style="color:red;" on-tap="{{ doReallyDelete }}" >{{ 'yes' | t }}</paper-button>
+    </paper-action-dialog>
     
-  <fd-ws-service 
-    id="wss"
-    ssl="{{ssl}}"
-    address="{{address}}" 
-    port="{{port}}" 
-    apiVersion="{{apiVersion}}"
-    wstype="{{wsType}}" 
-    on-message="{{updateItem}}"
-    auto="false">
-  </fd-ws-service>     
-</template>
+    <fd-api-settings ssl="{{ssl}}" address="{{address}}" port="{{port}}" apiVersion="{{apiVersion}}" apiUrl="{{apiUrl}}">
+    </fd-api-settings>
 
-<fd-rest-service 
-    id="itemSave"
-    fdtype="{{type}}/{{item.uuid}}" 
-    guest="{{guest}}"
-    auto="false"
-    method="PUT">
-  </fd-rest-service>   
+    <template if="{{uuid}}">
+      <fd-rest-service id="itemData" fdtype="{{type}}/{{uuid}}" fditems="{{item}}" on-rest-response="{{startWS}}" guest="{{guest}}" auto="false">
+      </fd-rest-service>
 
-<shadow></shadow>
-</template>
+      <fd-generic-ws id="wss" type="{{wsType}}" on-message="{{updateItem}}" auto="false">
+      </fd-generic-ws>
+    </template>
+
+    <fd-rest-service id="itemSave" fdtype="{{type}}/{{item[uuidfield]}}" guest="{{guest}}" auto="false" method="PUT">
+    </fd-rest-service>
+
+    <fd-rest-service id="itemCopy" fdtype="{{type}}/{{item[uuidfield]}}/copy" on-rest-response="{{requery}}" guest="{{guest}}" auto="false" method="POST">
+    </fd-rest-service>
+ <fd-rest-service id="itemDelete" fdtype="{{type}}/{{item[uuidfield]}}" on-rest-response="{{requery}}" guest="{{guest}}" auto="false" method="DELETE">
+    </fd-rest-service>
+    <shadow></shadow>
+  </template>
   <script>
     Polymer("fd-generic-item", {
-     /**
-       * The 'guest' attribute tells whether the API call should be made as a guest user 
+      /**
+       * The 'guest' attribute tells whether the API call should be made as a guest user
        *
        * @attribute guest
        * @type boolean
        */
-     /**
+      /**
        * The 'thingUuid' attribute specifies the uuid of Thing to show
        *
        * @attribute thingUuid
        * @type string
        */
-     /**
-       * The 'address' attribute specifies the hostname or ip address of API service 
+      /**
+       * The 'address' attribute specifies the hostname or ip address of API service
        *
        * @attribute address
        * @type string
        */
-    
-     /**
-       * The 'apiVersion' attribute specifies the API version to use 
+
+      /**
+       * The 'apiVersion' attribute specifies the API version to use
        *
        * @attribute apiVersion
        * @type string
        */
-    
-     /**
-       * The 'port' attribute specifies the tcp port of API service. 
-       * Default value 0 mean the port number is choosen from the SSL attribute, 
+
+      /**
+       * The 'port' attribute specifies the tcp port of API service.
+       * Default value 0 mean the port number is choosen from the SSL attribute,
        * so port will be 9111 if no SSL, and 9113 is SSL
        * @attribute port
        * @type int
        */
-    
-     /**
-       * The 'ssl' attribute tells whether the API call requires a encrypted connection 
+
+      /**
+       * The 'ssl' attribute tells whether the API call requires a encrypted connection
        *
        * @attribute ssl
        * @type boolean
        */
-    mode: 'matCard',
-    guest: undefined,  
-    item: undefined,
-    uuid: undefined,
-    updateItem: function(event){
+      mode: 'matCard',
+      guest: undefined,
+      item: undefined,
+      uuid: undefined,
+      uuidfield: 'uuid',
+      updateItem: function(event) {
         var data = JSON.parse(event.detail);
-        if(data.uuid === this.item.uuid){
+        if (data[this.uuidfield] === this.item[this.uuidfield]) {
           this.item = data;
-        } 
-      },
-      startWS: function(){
-        if (!!this.wsType){
-          this.$.wss.go();
         }
       },
-      ready: function(){
-        if (!!this.uuid ){
-          //console.log("fd-generic-item.uuid:" + this.uuid);
-          this.$.itemData.auto=true;
+      startWS: function() {
+        if (!!this.wsType) {
+          this.$.wss.auto=true;
+        }
+      },
+      ready: function() {
+        if (!!this.uuid) {
+          this.$.itemData.auto = true;
           this.$.itemData.go();
         }
       },
-      saveItem: function(){
+      // overridden from fd-polymer-card
+      saveItem: function() {
         this.$.itemSave.body = JSON.stringify(this.item);
         this.$.itemSave.go();
+      },
+      // overridden from fd-polymer-card
+      copyItem: function() {
+        this.$.itemCopy.go();
+        this.encopy=false;
+      },
+      // overridden from fd-polymer-card
+      deleteItem: function() {
+        this.$.deldialog.toggle();
+      },
+      doReallyDelete: function(){
+        this.$.itemDelete.go();
+      },
+      requery: function(e){
+        this.fire("needrequery",e);
       }
     });
-
   </script>
 
 </polymer-element>

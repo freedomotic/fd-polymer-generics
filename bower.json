@@ -1,6 +1,6 @@
 {
   "name": "fd-polymer-generics",
-  "version": "0.2.2",
+  "version": "0.2.8",
   "keywords": [
     "freedomotic",
     "seed",
@@ -10,9 +10,9 @@
   "main": "fd-polymer-generics.html",
   "dependencies": {
     "polymer": "Polymer/polymer#^0.5.5",
-    "fd-polymer-card": "~0.5.2",
+    "fd-polymer-card": "~0.5.8",
     "fd-polymer-rest-service": "~0.2.6",
-    "fd-polymer-ws-service": "~0.1.8",
+    "fd-polymer-ws-service": "~0.2.0",
     "paper-elements": "polymer/paper-elements#~0.5.5"
   },
   "devDependencies": {
@@ -31,5 +31,10 @@
     "../",
     "test",
     "tests"
-  ]
+  ],
+  "resolutions": {
+    "core-component-page": "^0.5",
+    "polymer": "^0.5.1",
+    "fd-polymer-api-settings": "~0.2.0"
+  }
 }
