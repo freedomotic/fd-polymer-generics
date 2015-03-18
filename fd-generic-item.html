@@ -106,7 +106,7 @@ Element providing proof of concept of a Thing card, with all needed features
       uuid: undefined,
       uuidfield: 'uuid',
       updateItem: function(event) {
-        var data = JSON.parse(event.detail);
+        var data = event.detail;
         if (data[this.uuidfield] === this.item[this.uuidfield]) {
           this.item = data;
         }
